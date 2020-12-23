@@ -10,8 +10,10 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
   },
   "dependencies": {
+    "@types/react-native-base64": "^0.1.0",
     "react": "16.13.1",
     "react-native": "0.63.3",
+    "react-native-base64": "^0.2.1",
     "react-native-ble-plx": "^2.0.2"
   },
   "devDependencies": {
