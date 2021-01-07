@@ -7,17 +7,29 @@ const BLE_BIKE_SERVICE_UUID = "bdb7d889-18b3-4342-b7d7-e3201e5fa3ef"
 const BLE_BIKE_TEMPERATURE_CHARACTERISTIC_UUID = "f71b8d3f-eb1c-495f-9e61-b8a773f2867f"
 const BLE_BIKE_HUMIDITY_CHARACTERISTIC_UUID = "8bbb426f-c7a9-4add-8037-68d290fc3875"
 type PromiseBoolResolve = (value?: (boolean | PromiseLike<boolean> | undefined)) => void
+export type TemperatureListener = (temperature: string) => void
+export type HumidityListener = (humidity: string) => void
 
 export class BikeBLE {
     private static instance: BikeBLE | null = null
     private connectedToDevice = false
     private hasLocationPermission = false
+    private temperatureListeners: TemperatureListener[] = []
+    private humidityListeners: HumidityListener[] = []
 
     private ble: BleManager
     private device: Device | null = null
 
     private constructor() {
         this.ble = new BleManager()
+    }
+
+    subscribeTemperature(listener: TemperatureListener) {
+        this.temperatureListeners.push(listener)
+    }
+
+    subscribeHumidity(listener: HumidityListener) {
+        this.humidityListeners.push(listener)
     }
 
     async waitForDevice(): Promise<boolean> {
@@ -53,6 +65,7 @@ export class BikeBLE {
         })
         return Promise.race([result, timeout])
     }
+
 
     private static log(message: any) {
         console.log("BleManager: ", message)
@@ -140,7 +153,9 @@ export class BikeBLE {
             return
         }
 
-        BikeBLE.log({temperature: this.parseFloatFromData(characteristic.value)})
+        for (const listener of this.temperatureListeners) {
+            listener(this.parseFloatFromData(characteristic.value))
+        }
     }
     monitorHumidity = (error: (BleError | null), characteristic: (Characteristic | null)) => {
         if (error) {
@@ -151,8 +166,9 @@ export class BikeBLE {
             BikeBLE.error("monitor humidity: no data")
             return
         }
-
-        BikeBLE.log({humidity: this.parseFloatFromData(characteristic.value)})
+        for (const listener of this.humidityListeners) {
+            listener(this.parseFloatFromData(characteristic.value))
+        }
     }
 
     static getInstance() {
