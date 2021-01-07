@@ -12,5 +12,12 @@
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
-    <application android:usesCleartextTraffic="true" tools:targetApi="28" tools:ignore="GoogleAppIndexingWarning" />
+    <application android:usesCleartextTraffic="true" tools:targetApi="28" tools:ignore="GoogleAppIndexingWarning">
+        <meta-data
+                android:name="com.google.android.geo.API_KEY"
+                android:value="AIzaSyDnKFOhU-oX_q5C7lU1aTNEBYiKiqQdEaM"
+        />
+        <uses-library android:name="org.apache.http.legacy" android:required="false"/>
+
+    </application>
 </manifest>
