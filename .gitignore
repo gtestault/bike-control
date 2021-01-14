@@ -1,6 +1,7 @@
 # OSX
 **/AppDelegate.m
 */AppDelegate.m
+/ios/bike_control/AppDelegate.m
 #
 .DS_Store
 
