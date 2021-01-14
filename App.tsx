@@ -37,8 +37,8 @@ const App = () => {
     return (
         <NavigationContainer>
             <Stack.Navigator>
-                <Stack.Screen name="NavigationScreen" options={{headerShown: false}} component={NavigationScreen}/>
                 <Stack.Screen name="HomeScreen" options={{headerShown: false}} component={HomeScreen}/>
+                <Stack.Screen name="NavigationScreen" options={{headerShown: false}} component={NavigationScreen}/>
                 <Stack.Screen name="SettingsScreen" options={{headerShown: true, headerTitle: "Einstellungen"}} component={SettingsScreen}/>
             </Stack.Navigator>
         </NavigationContainer>

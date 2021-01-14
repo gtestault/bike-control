@@ -108,6 +108,10 @@ export class BikeBLE {
             })
     }
 
+    public isConnected() {
+        return this.connectedToDevice
+    }
+
 
     private findDevice(d: Device, resolve: PromiseBoolResolve) {
         if (d.localName === BLE_BIKE_CONTROL_LOCAL_NAME) {
@@ -145,6 +149,8 @@ export class BikeBLE {
     }
     monitorTemperature = (error: (BleError | null), characteristic: (Characteristic | null)) => {
         if (error) {
+            this.connectedToDevice = false
+            this.device = null
             BikeBLE.error(error)
             return
         }
@@ -159,6 +165,8 @@ export class BikeBLE {
     }
     monitorHumidity = (error: (BleError | null), characteristic: (Characteristic | null)) => {
         if (error) {
+            this.connectedToDevice = false
+            this.device = null
             BikeBLE.error(error)
             return
         }

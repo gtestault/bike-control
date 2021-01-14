@@ -45,14 +45,28 @@ export const NavigationScreen = ({navigation}: Props) => {
         latitudeDelta: 0.015,
         longitudeDelta: 0.015
     })
+    const [connectionRetry, setConnectionRetry] = useState(0)
     const [centerView, setCenterView] = useState(0)
-    const [temperature, setTemperature] = useState("no data")
-    const [humidity, setHumidity] = useState("no data")
+    const [temperature, setTemperature] = useState("")
+    const [humidity, setHumidity] = useState("")
     const [bleConnectionState, setBleConnectionState] = useState<BleConnectionState>(BleConnectionState.DISCONNECTED)
     const mapRef = useRef<MapView | null>(null)
-    const updateTemp: TemperatureListener = (temperature) => {setTemperature(temperature)}
-    const updateHumidity: HumidityListener = (humidity) => {setHumidity(humidity)}
+    const updateTemp: TemperatureListener = (temperature) => {
+        if (!BikeBLE.getInstance().isConnected()) {
+            setBleConnectionState(BleConnectionState.ERROR)
+            return
+        }
+        setTemperature(temperature)
+    }
+    const updateHumidity: HumidityListener = (humidity) => {
+        if (!BikeBLE.getInstance().isConnected()) {
+            setBleConnectionState(BleConnectionState.ERROR)
+            return
+        }
+        setHumidity(humidity)
+    }
     useEffect(() => {
+        setBleConnectionState(BleConnectionState.DISCONNECTED)
         BikeBLE.getInstance().waitForDevice()
             .then(() => {
                 setBleConnectionState(BleConnectionState.CONNECTED)
@@ -62,8 +76,10 @@ export const NavigationScreen = ({navigation}: Props) => {
             .catch(e => {
                 setBleConnectionState(BleConnectionState.ERROR)
             })
-        return () => {BikeBLE.getInstance().destroyConnection()}
-    }, [])
+        return () => {
+            BikeBLE.getInstance().destroyConnection()
+        }
+    }, [connectionRetry])
 
     useEffect(() => {
         Geolocation.getCurrentPosition(
@@ -73,8 +89,22 @@ export const NavigationScreen = ({navigation}: Props) => {
                     longitude: info.coords.longitude,
                     altitude: info.coords.altitude
                 })
+                if (centerView === 0) {
+                    console.log("bazinga")
+                    setRegion({
+                        latitude: info.coords.latitude,
+                        longitude: info.coords.longitude,
+                        latitudeDelta: 0.015,
+                        longitudeDelta: 0.015
+                    })
+                }
                 if (mapRef.current) {
-                    mapRef.current.animateToRegion({latitude: info.coords.latitude, longitude: info.coords.longitude, latitudeDelta: 0.015, longitudeDelta: 0.015}, 500)
+                    mapRef.current.animateToRegion({
+                        latitude: info.coords.latitude,
+                        longitude: info.coords.longitude,
+                        latitudeDelta: 0.015,
+                        longitudeDelta: 0.015
+                    }, 500)
                 }
             });
     }, [centerView])
@@ -82,7 +112,7 @@ export const NavigationScreen = ({navigation}: Props) => {
     const renderMap = () => {
         return (
             <MapView
-                onMapReady={() => setCenterView(centerView + 1)}
+                onMapReady={() => { setCenterView(centerView + 1); }}
                 ref={mapRef}
                 customMapStyle={MapStyle}
                 provider={PROVIDER_GOOGLE} // remove if not using Google Maps
@@ -100,21 +130,46 @@ export const NavigationScreen = ({navigation}: Props) => {
 
     const renderBleConnectionState = () => {
         switch (bleConnectionState) {
-            case BleConnectionState.CONNECTED:
-               return <FontAwesomeIcon icon={faMicrochip} size={32} color={"white"}/>
-            case BleConnectionState.DISCONNECTED:
-               return <ActivityIndicator color={"white"} size="large"/>
             case BleConnectionState.ERROR:
-                return <FontAwesomeIcon icon={faMicrochip} size={32} color={"red"}/>
+            case BleConnectionState.CONNECTED:
+                return <FontAwesomeIcon icon={faMicrochip} size={32} color={"white"}/>
+            case BleConnectionState.DISCONNECTED:
+                return <ActivityIndicator color={"white"} size="large"/>
         }
+    }
+
+    const renderHumidityView = () => {
+        if (humidity === "") {
+            return null
+        }
+        return (
+            <View style={styles.humidityView}>
+                <FontAwesomeIcon icon={faTint} size={32} color={"white"}/>
+                <Text style={styles.overlayText}>{humidity}%</Text>
+            </View>
+        )
+    }
+    const renderTemperatureView = () => {
+        if (temperature === "") {
+            return null
+        }
+        return (
+            <View style={styles.temperatureView}>
+                <FontAwesomeIcon icon={faThermometerHalf} size={32} color={"white"}/>
+                <Text style={styles.overlayText}>{temperature}°C</Text>
+            </View>
+        )
+
     }
 
     return (
         <SafeAreaView>
             <View style={styles.container}>
                 <View style={styles.controlPanel}>
-                    <TouchableOpacity style={styles.arduinoButton} activeOpacity={0.8} onPress={() => {
-                        BikeBLE.getInstance().destroyConnection()
+                    <TouchableOpacity
+                        style={{backgroundColor: bleConnectionState === BleConnectionState.ERROR ? "red" : "#003594", ...styles.arduinoButton}}
+                        activeOpacity={0.8} onPress={() => {
+                        setConnectionRetry(connectionRetry + 1)
                     }}>
                         {renderBleConnectionState()}
                     </TouchableOpacity>
@@ -130,14 +185,8 @@ export const NavigationScreen = ({navigation}: Props) => {
                     </TouchableHighlight>
                 </View>
                 {renderMap()}
-                <View style={styles.humidityView}>
-                    <FontAwesomeIcon icon={faTint} size={32} color={"white"}/>
-                    <Text style={styles.overlayText}>{humidity}%</Text>
-                </View>
-                <View style={styles.temperatureView}>
-                    <FontAwesomeIcon icon={faThermometerHalf} size={32} color={"white"}/>
-                    <Text style={styles.overlayText}>{temperature}°C</Text>
-                </View>
+                {renderHumidityView()}
+                {renderTemperatureView()}
             </View>
         </SafeAreaView>
     )
@@ -165,7 +214,6 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         flex: 2,
         height: "100%",
-        backgroundColor: "#003594",
     },
     controlButton: {
         display: "flex",
