@@ -17,11 +17,13 @@ import {NavigationContainer} from "@react-navigation/native";
 import {HomeScreen} from "./src/pages/HomeScreen";
 import {SettingsScreen} from "./src/pages/SettingsScreen";
 import {NavigationScreen} from "./src/pages/NavigationScreen";
+import {TestScreen} from "./src/pages/TestScreen";
 
 export type RootStackParamList = {
     HomeScreen: undefined
     SettingsScreen: undefined
     NavigationScreen: undefined
+    TestScreen: undefined
 }
 const Stack = createStackNavigator<RootStackParamList>()
 const App = () => {
@@ -37,8 +39,11 @@ const App = () => {
     return (
         <NavigationContainer>
             <Stack.Navigator>
-                <Stack.Screen name="HomeScreen" options={{headerShown: false}} component={HomeScreen}/>
+
+
+                {/*<Stack.Screen name="TestScreen" options={{headerShown: false}} component={TestScreen}/>*/}
                 <Stack.Screen name="NavigationScreen" options={{headerShown: false}} component={NavigationScreen}/>
+                <Stack.Screen name="HomeScreen" options={{headerShown: false}} component={HomeScreen}/>
                 <Stack.Screen name="SettingsScreen" options={{headerShown: true, headerTitle: "Einstellungen"}} component={SettingsScreen}/>
             </Stack.Navigator>
         </NavigationContainer>

@@ -17,7 +17,9 @@ import MapStyle from "../service/MapStyle";
 import Geolocation from '@react-native-community/geolocation';
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
 import {faThermometerHalf, faTint, faBiking, faCog, faMicrochip, faCrosshairs} from "@fortawesome/free-solid-svg-icons";
-import BikeBLE, {HumidityListener, TemperatureListener} from "../service/BikeBLE";
+import BikeBLE, {DistanceLeftListener, HumidityListener, TemperatureListener} from "../service/BikeBLE";
+import {Accelerometer} from "expo-sensors";
+import {Subscription} from "react-native-ble-plx";
 
 
 type NavigationScreenNavigationProp = StackNavigationProp<RootStackParamList,
@@ -49,6 +51,9 @@ export const NavigationScreen = ({navigation}: Props) => {
     const [centerView, setCenterView] = useState(0)
     const [temperature, setTemperature] = useState("")
     const [humidity, setHumidity] = useState("")
+    const [subscription, setSubscription] = useState<Subscription | null>(null);
+    const [distanceLeftWarning, setDistanceLeftWarning] = useState(false)
+    const [braking, setBraking] = useState(false)
     const [bleConnectionState, setBleConnectionState] = useState<BleConnectionState>(BleConnectionState.DISCONNECTED)
     const mapRef = useRef<MapView | null>(null)
     const updateTemp: TemperatureListener = (temperature) => {
@@ -58,6 +63,45 @@ export const NavigationScreen = ({navigation}: Props) => {
         }
         setTemperature(temperature)
     }
+    const _subscribe = () => {
+        setSubscription(
+            Accelerometer.addListener(accelerometerData => {
+                if (accelerometerData.y < -1.25) {
+                    setBraking(true)
+                }
+            })
+        );
+    };
+    const _fast = () => {
+        Accelerometer.setUpdateInterval(16);
+    };
+
+    useEffect(() => {
+        _subscribe()
+        _fast()
+        return () => _unsubscribe()
+    }, [])
+
+    useEffect(() => {
+        if (braking) {
+            console.log("braking detected")
+            BikeBLE.getInstance().writeBraking(true)
+            let timeout = setTimeout(() => {
+                setBraking(false);
+                BikeBLE.getInstance().writeBraking(false)
+                console.log("braking stopped")
+            }, 5000)
+            return () => {
+                clearTimeout(timeout)
+            }
+        }
+        return
+    }, [braking]);
+
+    const _unsubscribe = () => {
+        subscription && subscription.remove();
+        setSubscription(null);
+    };
     const updateHumidity: HumidityListener = (humidity) => {
         if (!BikeBLE.getInstance().isConnected()) {
             setBleConnectionState(BleConnectionState.ERROR)
@@ -65,15 +109,30 @@ export const NavigationScreen = ({navigation}: Props) => {
         }
         setHumidity(humidity)
     }
+    const checkDistanceLeft: DistanceLeftListener = (distanceLeft) => {
+        if (!BikeBLE.getInstance().isConnected()) {
+            setBleConnectionState(BleConnectionState.ERROR)
+            return
+        }
+        console.log(distanceLeft)
+        if (distanceLeft < 140) {
+            setDistanceLeftWarning(true)
+        }
+    }
     useEffect(() => {
         setBleConnectionState(BleConnectionState.DISCONNECTED)
         BikeBLE.getInstance().waitForDevice()
             .then(() => {
+                console.log("connected to bike chip")
                 setBleConnectionState(BleConnectionState.CONNECTED)
                 BikeBLE.getInstance().subscribeTemperature(_.throttle(updateTemp, 10000))
                 BikeBLE.getInstance().subscribeHumidity(_.throttle(updateHumidity, 10000))
+                /*
+                                BikeBLE.getInstance().subscribeDistanceLeft(checkDistanceLeft)
+                */
             })
             .catch(e => {
+                console.error(e)
                 setBleConnectionState(BleConnectionState.ERROR)
             })
         return () => {
@@ -90,7 +149,6 @@ export const NavigationScreen = ({navigation}: Props) => {
                     altitude: info.coords.altitude
                 })
                 if (centerView === 0) {
-                    console.log("bazinga")
                     setRegion({
                         latitude: info.coords.latitude,
                         longitude: info.coords.longitude,
@@ -112,7 +170,9 @@ export const NavigationScreen = ({navigation}: Props) => {
     const renderMap = () => {
         return (
             <MapView
-                onMapReady={() => { setCenterView(centerView + 1); }}
+                onMapReady={() => {
+                    setCenterView(centerView + 1);
+                }}
                 ref={mapRef}
                 customMapStyle={MapStyle}
                 provider={PROVIDER_GOOGLE} // remove if not using Google Maps
